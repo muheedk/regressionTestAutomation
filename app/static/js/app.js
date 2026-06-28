@@ -1,5 +1,16 @@
 const API_BASE = '/api';
 
+// HTML escaping to prevent XSS
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // State
 let services = [];
 let suites = [];
@@ -46,8 +57,8 @@ function renderServices() {
     list.innerHTML = services.map(s => `
         <div class="service-card" onclick="selectService('${s.id}')">
             <div>
-                <strong>${s.name}</strong>
-                <div style="font-size:0.85rem;color:var(--text-muted)">${s.base_url} &bull; ${s.endpoints.length} endpoint(s)</div>
+                <strong>${escapeHtml(s.name)}</strong>
+                <div style="font-size:0.85rem;color:var(--text-muted)">${escapeHtml(s.base_url)} &bull; ${s.endpoints.length} endpoint(s)</div>
             </div>
             <div style="display:flex;align-items:center;gap:10px">
                 <span class="badge ${s.service_type === 'dotnet_core' ? 'badge-dotnet' : 'badge-spring'}">
@@ -187,7 +198,7 @@ function renderSuites() {
     list.innerHTML = suites.map(s => `
         <div class="service-card">
             <div>
-                <strong>${s.name}</strong>
+                <strong>${escapeHtml(s.name)}</strong>
                 <div style="font-size:0.85rem;color:var(--text-muted)">${s.test_cases.length} test cases &bull; ${s.service_config.service_type === 'dotnet_core' ? '.NET Core' : 'Spring Boot'}</div>
             </div>
             <div style="display:flex;gap:10px">
@@ -241,7 +252,7 @@ function renderReports() {
 
     const latest = reports[0];
     container.innerHTML = `
-        <h3 style="margin-bottom:16px">${latest.suite_name}</h3>
+        <h3 style="margin-bottom:16px">${escapeHtml(latest.suite_name)}</h3>
         <div class="result-summary">
             <div class="stat-card stat-passed">
                 <div class="value">${latest.passed}</div>
@@ -265,8 +276,8 @@ function renderReports() {
                 <div class="result-row">
                     <div class="status-icon status-${r.status}">${r.status === 'passed' ? '✓' : r.status === 'failed' ? '✗' : '!'}</div>
                     <div class="test-info">
-                        <div class="test-name">${r.test_name}</div>
-                        <div class="test-detail">${r.error_message || `Status: ${r.response_status_code}`}</div>
+                        <div class="test-name">${escapeHtml(r.test_name)}</div>
+                        <div class="test-detail">${escapeHtml(r.error_message || `Status: ${r.response_status_code}`)}</div>
                     </div>
                     <div class="response-time">${r.response_time_ms.toFixed(0)}ms</div>
                 </div>
@@ -276,7 +287,7 @@ function renderReports() {
             reports.slice(1).map(r => `
                 <div class="service-card" style="cursor:default">
                     <div>
-                        <strong>${r.suite_name}</strong>
+                        <strong>${escapeHtml(r.suite_name)}</strong>
                         <div style="font-size:0.85rem;color:var(--text-muted)">
                             ${r.passed} passed, ${r.failed} failed, ${r.errors} errors &bull; ${r.total_duration_ms.toFixed(0)}ms
                         </div>
@@ -285,6 +296,13 @@ function renderReports() {
                 </div>
             `).join('') : ''}
     `;
+}
+
+// Select service (view details)
+function selectService(id) {
+    const service = services.find(s => s.id === id);
+    if (!service) return;
+    showAlert(`Selected: ${escapeHtml(service.name)} (${service.endpoints.length} endpoints)`, 'info');
 }
 
 // Utility

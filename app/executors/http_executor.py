@@ -95,7 +95,8 @@ class HttpTestExecutor:
                             assertions_failed += 1
                             error_messages.append(f"Response missing expected field '{field_name}'")
                 except Exception:
-                    pass
+                    assertions_failed += 1
+                    error_messages.append("Response is not valid JSON; cannot validate schema")
 
             # Performance check for tagged tests
             if "performance" in test_case.tags and elapsed_ms > self._max_response_time_ms:

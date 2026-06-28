@@ -1,11 +1,32 @@
 from __future__ import annotations
 
 from app.generators.base import TestGenerator
-from app.models.service import DataSource, EndpointConfig, HttpMethod, ServiceConfig, TestCase
+from app.models.service import DataSource, EndpointConfig, HttpMethod, ServiceConfig, TestCase, TestSuite
 
 
 class SpringBootTestGenerator(TestGenerator):
     """Generates regression test cases for Java Spring Boot microservices."""
+
+    def generate_suite(self, service_config: ServiceConfig) -> TestSuite:
+        suite = super().generate_suite(service_config)
+        # Add a single actuator health check per service (not per endpoint)
+        actuator_url = self._build_url(service_config.base_url, "/actuator/health")
+        suite.test_cases.append(
+            TestCase(
+                name=f"[{service_config.name}] Actuator Health Check",
+                description="Verify Spring Boot actuator health endpoint returns UP status",
+                service_name=service_config.name,
+                endpoint_path="/actuator/health",
+                method=HttpMethod.GET,
+                full_url=actuator_url,
+                headers={"Accept": "application/json"},
+                expected_status_code=200,
+                expected_response_contains=["UP"],
+                data_source=DataSource.ORACLE_DB,
+                tags=["health-check", "spring-boot"],
+            )
+        )
+        return suite
 
     def generate_tests_for_endpoint(
         self, service_config: ServiceConfig, endpoint: EndpointConfig
@@ -52,25 +73,7 @@ class SpringBootTestGenerator(TestGenerator):
             )
         )
 
-        # Test 3: Spring Boot actuator health check
-        actuator_url = self._build_url(service_config.base_url, "/actuator/health")
-        tests.append(
-            TestCase(
-                name=f"[{service_config.name}] Actuator Health Check",
-                description="Verify Spring Boot actuator health endpoint returns UP status",
-                service_name=service_config.name,
-                endpoint_path="/actuator/health",
-                method=HttpMethod.GET,
-                full_url=actuator_url,
-                headers={"Accept": "application/json"},
-                expected_status_code=200,
-                expected_response_contains=["UP"],
-                data_source=endpoint.data_source,
-                tags=["health-check", "spring-boot"],
-            )
-        )
-
-        # Test 4: Invalid path parameter
+        # Test 3: Invalid path parameter
         if "{" in endpoint.path:
             invalid_url = self._build_url(
                 service_config.base_url,

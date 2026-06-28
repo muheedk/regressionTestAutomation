@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ServiceType(str, Enum):
@@ -16,6 +16,9 @@ class ServiceType(str, Enum):
 class HttpMethod(str, Enum):
     GET = "GET"
     POST = "POST"
+    PUT = "PUT"
+    PATCH = "PATCH"
+    DELETE = "DELETE"
 
 
 class DataSource(str, Enum):
@@ -50,14 +53,22 @@ class EndpointConfig(BaseModel):
 
 class ServiceConfig(BaseModel):
     id: UUID = Field(default_factory=uuid4)
-    name: str = Field(description="Service name (e.g., CustomerService)")
+    name: str = Field(description="Service name (e.g., CustomerService)", max_length=200)
     service_type: ServiceType
-    base_url: str = Field(description="Base URL of the service (e.g., http://localhost:5001)")
-    endpoints: list[EndpointConfig] = Field(default_factory=list)
+    base_url: str = Field(description="Base URL of the service (e.g., http://localhost:5001)", max_length=2000)
+    endpoints: list[EndpointConfig] = Field(default_factory=list, max_length=100)
     auth_header: str | None = None
     auth_token: str | None = None
     description: str = ""
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    @field_validator("base_url")
+    @classmethod
+    def validate_url_scheme(cls, v: str) -> str:
+        allowed_schemes = ("http://", "https://")
+        if not v.lower().startswith(allowed_schemes):
+            raise ValueError("base_url must start with http:// or https://")
+        return v
 
 
 class TestCase(BaseModel):
